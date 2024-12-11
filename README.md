@@ -1,27 +1,23 @@
+# dplist
 
-PlistDumper 是一个拆图工具。游戏发布的时候通常会采用和图来提高游戏运行效率，PlistDumper可以根据和图的配置文件拆分出子图片，并且还原图片真实大小。
+dplist 是一个拆图工具. 游戏发布的时候通常会采用和图来提高游戏运行效率, dplist 可以根据和图集描述文件拆分出子图片, 并且还原图片真实大小.
 
-* 支持TexturePacker各种版本的plist文件导出
-* 支持TexturePacker部分json文件导出
-* 支持fnt位图字体文件导出
-* 支持spine的atlas文件导出
-* `golang` 开发，跨平台，可运行在Windows、Mac、Linux。
+- 支持 TexturePacker 各种版本的 plist 文件导出
+- 支持 TexturePacker 部分 json 文件导出
+- 支持 fnt 位图字体文件导出
+- 支持 spine 的 atlas 文件导出
 
 ## 安装
-* 从github release里下载编译好的执行程序
 
-## 从源码安装
-* 首先安装golang环境
-* 执行 go get -u -v github.com/qcdong2016/PlistDumper
+- 首先安装 golang 环境
+- 执行 go install github.com/ajenpan/dplist
 
 ## 使用说明
-```
-$ PlistDumper [plist|json|fnt|atlas|dir]
-```
-* 第一个参数传文件或者目录
-* 不传参数等于传当前目录
-* --ext 指定只导出该后缀的文件
 
-# 预览
+```
+$ dplist inputdir [-e json, plist, fnt, atlas] [--trimdir]
+```
 
-![preview](./preview.jpg)
+## todolist
+
+- [ ] 支持自定义输出目录
