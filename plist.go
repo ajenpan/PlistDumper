@@ -1,10 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"image"
-	"image/draw"
-	"strconv"
-	"strings"
 
 	"howett.net/plist"
 )
@@ -19,6 +17,7 @@ type FrameV0 struct {
 	OffsetX        float32 `plist:"offsetX"`
 	OffsetY        float32 `plist:"offsetY"`
 }
+
 type PlistV0 struct {
 	Frames map[string]*FrameV0 `plist:"frames"`
 }
@@ -28,6 +27,7 @@ type FrameV1 struct {
 	Offset     string `plist:"offset"`
 	SourceSize string `plist:"sourceSize"`
 }
+
 type PlistV1 struct {
 	Frames map[string]*FrameV1 `plist:"frames"`
 }
@@ -39,12 +39,12 @@ type FrameV2 struct {
 	SourceColorRect string `plist:"sourceColorRect"`
 	SourceSize      string `plist:"sourceSize"`
 }
+
 type PlistV2 struct {
 	Frames map[string]*FrameV2 `plist:"frames"`
 }
 
 type FrameV3 struct {
-	//Aliases      []interface{} `plist:"aliases"`
 	SpriteOffset     string `plist:"spriteOffset"`
 	SpriteSize       string `plist:"spriteSize"`
 	SpriteSourceSize string `plist:"spriteSourceSize"`
@@ -67,67 +67,24 @@ type Version struct {
 	MetaData *MetaData `plist:"metadata"`
 }
 
-func intArr(str string) []int {
-	ret := make([]int, 0)
-	s := strings.Replace(str, "{", "", -1)
-	s = strings.Replace(s, "}", "", -1)
-
-	sA := strings.Split(s, ",")
-
-	ret = make([]int, len(sA))
-	for i, v := range sA {
-		v = strings.TrimSpace(v)
-		value, err := strconv.ParseFloat(v, 32)
-		if err != nil {
-			value, err := strconv.ParseInt(v, 10, 32)
-			if err != nil {
-				panic(err)
-			}
-			ret[i] = int(value)
-		} else {
-			ret[i] = int(value)
-		}
-	}
-
-	return ret
-}
-
-func SubImage(src image.Image, x, y, w, h int) image.Image {
-	r := image.Rect(0, 0, x+w, y+h)
-	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	draw.Draw(dst, r, src, image.Point{x, y}, draw.Src)
-	return dst
-}
-
-func RotateImage(src image.Image) image.Image {
-	w := src.Bounds().Max.X
-	h := src.Bounds().Max.Y
-	dst := image.NewRGBA(image.Rect(0, 0, h, w))
-
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
-			dst.Set(y, w-x, src.At(x, y))
-		}
-	}
-
-	return dst
-}
-
-func dumpPlist(c *DumpContext) error {
-
+func dumpPlist(ctx *DumpContext) error {
 	version := Version{}
-	_, err := plist.Unmarshal(c.FileContent, &version)
+	_, err := plist.Unmarshal(ctx.FileContent, &version)
 	if err != nil {
 		return err
 	}
 
-	part := c.AppendPart()
-	part.ImageFile = version.MetaData.Texture
+	if version.MetaData == nil {
+		return fmt.Errorf("unmarshal context error, got MetaData nil, filename:%s", ctx.FileName)
+	}
+
+	part := ctx.AppendPart()
+	part.ImageSoureFile = version.MetaData.Texture
 
 	switch version.MetaData.Format {
 	case 0:
 		plistData := PlistV0{}
-		_, err = plist.Unmarshal(c.FileContent, &plistData)
+		_, err = plist.Unmarshal(ctx.FileContent, &plistData)
 		if err != nil {
 			return err
 		}
@@ -141,9 +98,8 @@ func dumpPlist(c *DumpContext) error {
 			}
 		}
 	case 1:
-
 		plistData := PlistV1{}
-		_, err = plist.Unmarshal(c.FileContent, &plistData)
+		_, err = plist.Unmarshal(ctx.FileContent, &plistData)
 		if err != nil {
 			return err
 		}
@@ -159,9 +115,8 @@ func dumpPlist(c *DumpContext) error {
 			}
 		}
 	case 2:
-
 		plistData := PlistV2{}
-		_, err = plist.Unmarshal(c.FileContent, &plistData)
+		_, err = plist.Unmarshal(ctx.FileContent, &plistData)
 		if err != nil {
 			return err
 		}
@@ -173,13 +128,12 @@ func dumpPlist(c *DumpContext) error {
 				Rect:         image.Rect(f[0], f[1], f[2]+f[0], f[3]+f[1]),
 				OriginalSize: image.Point{s[0], s[1]},
 				Offset:       image.Point{o[0], o[1]},
-				Rotated:      ifelse(v.Rotated, 90, 0),
+				Rotated:      IfElse(v.Rotated, 90, 0),
 			}
 		}
 	case 3:
-
 		plistData := PlistV3{}
-		_, err = plist.Unmarshal(c.FileContent, &plistData)
+		_, err = plist.Unmarshal(ctx.FileContent, &plistData)
 		if err != nil {
 			return err
 		}
@@ -191,9 +145,11 @@ func dumpPlist(c *DumpContext) error {
 				Rect:         image.Rect(f[0], f[1], f[2]+f[0], f[3]+f[1]),
 				OriginalSize: image.Point{s[0], s[1]},
 				Offset:       image.Point{o[0], o[1]},
-				Rotated:      ifelse(v.TextureRotated, 90, 0),
+				Rotated:      IfElse(v.TextureRotated, 90, 0),
 			}
 		}
+	default:
+		return fmt.Errorf("unknow version.MetaData.Format:%d", version.MetaData.Format)
 	}
 
 	return nil

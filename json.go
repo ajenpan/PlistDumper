@@ -3,13 +3,16 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 )
 
-var (
-	ErrNotSupportJsonType = errors.New("not support json type")
-	ErrNotSupportFileType = errors.New("not support file type")
-)
+// var (
+// 	ErrNotSupportJsonType = errors.New("not support json type")
+// 	ErrNotSupportFileType = errors.New("not support file type")
+// )
+
+var ErrSkip = errors.New("skip")
 
 type JsonSize struct {
 	W int `json:"w"`
@@ -50,38 +53,38 @@ type JsonFrameV1 struct {
 	Filename         string    `json:"filename"`
 }
 
-func dumpJson(c *DumpContext) error {
+func dumpJson(ctx *DumpContext) error {
 
 	version := JsonVersion{}
-	err := json.Unmarshal(c.FileContent, &version)
+	err := json.Unmarshal(ctx.FileContent, &version)
 	if err != nil {
-		return err
+		return ErrSkip
 	}
 
 	if version.Meta == nil {
-		return ErrNotSupportJsonType
+		return ErrSkip
 	}
 
 	if version.Meta.Version != "1.0" {
-		return errors.New("unknow version:[" + version.Meta.Version + "]")
+		return fmt.Errorf("unknow version:%s", version.Meta.Version)
 	}
 
-	part := c.AppendPart()
-	part.ImageFile = version.Meta.Image
+	part := ctx.AppendPart()
+	part.ImageSoureFile = version.Meta.Image
 
 	frames := map[string]*JsonFrameV1{}
 
 	switch version.Frames.(type) {
 	case map[string]interface{}:
 		jsonData := JsonFrameHashV1{}
-		err = json.Unmarshal(c.FileContent, &jsonData)
+		err = json.Unmarshal(ctx.FileContent, &jsonData)
 		if err != nil {
 			return err
 		}
 		frames = jsonData.Frames
 	case []interface{}:
 		jsonData := JsonFrameArrayV1{}
-		err = json.Unmarshal(c.FileContent, &jsonData)
+		err = json.Unmarshal(ctx.FileContent, &jsonData)
 		if err != nil {
 			return err
 		}
@@ -98,7 +101,7 @@ func dumpJson(c *DumpContext) error {
 		part.Frames[k] = &Frame{
 			Rect:         image.Rect(f.X, f.Y, f.X+f.W, f.Y+f.H),
 			OriginalSize: image.Point{s.W, s.H},
-			Rotated:      ifelse(v.Rotated, 90, 0),
+			Rotated:      IfElse(v.Rotated, 90, 0),
 			Offset:       image.Point{-v.SpriteSourceSize.X / 2, -v.SpriteSourceSize.Y / 2}, //plist offset in center, json in left-top
 		}
 	}

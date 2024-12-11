@@ -45,7 +45,7 @@ func dumpFnt(c *DumpContext) error {
 			match := regPage.FindStringSubmatch(line)
 
 			part = c.AppendPart()
-			part.ImageFile = match[1]
+			part.ImageSoureFile = match[1]
 		case "char":
 			m := parseIntMap(line[n+1:])
 			k := string(rune(m["id"]))
